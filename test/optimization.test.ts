@@ -131,7 +131,7 @@ describe('OptimizationService request building', () => {
     });
 
     const call = vi.mocked(fetchImpl).mock.calls[0]!;
-    expect(call[0]).toBe('https://api.example.test/vroom');
+    expect(call[0]).toBe('https://api.example.test/optimize');
     expect(call[1]?.method).toBe('POST');
     expect(call[1]?.body).toBe(JSON.stringify({
       vehicles: [

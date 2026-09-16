@@ -27,7 +27,7 @@ describe('MatrixService request building', () => {
     await client.matrix.get({ coordinates: points });
     const url = new URL(String(vi.mocked(fetchImpl).mock.calls[0]![0]));
     expect(url.pathname).toBe(
-      '/osrm/table/v1/driving/103.8198,1.3521;103.8514,1.2897;103.9915,1.3644',
+      '/table/v1/driving/103.8198,1.3521;103.8514,1.2897;103.9915,1.3644',
     );
     expect(url.searchParams.get('annotations')).toBe('duration,distance');
     expect(url.searchParams.has('sources')).toBe(false);

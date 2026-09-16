@@ -61,7 +61,7 @@ describe('RoutesService request building', () => {
     });
     const url = String(vi.mocked(fetchImpl).mock.calls[0]![0]);
     expect(url).toBe(
-      'https://api.example.test/osrm/route/v1/driving/103.8198,1.3521;103.8514,1.2897;103.9915,1.3644',
+      'https://api.example.test/route/v1/driving/103.8198,1.3521;103.8514,1.2897;103.9915,1.3644',
     );
   });
 

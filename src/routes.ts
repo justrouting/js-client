@@ -185,7 +185,7 @@ export class RoutesService {
     return await this.transport.do(
       {
         method: 'GET',
-        path: `/osrm/route/v1/${profileOrDefault(req.profile ?? '')}/${coords}`,
+        path: `/route/v1/${profileOrDefault(req.profile ?? '')}/${coords}`,
         query: routeQuery(req),
         needsAuth: true,
       },

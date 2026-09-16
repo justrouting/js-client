@@ -6,6 +6,7 @@ import {
   DecodeError,
   TransportError,
   UnauthorizedError,
+  VERSION,
 } from '../src/index.js';
 import { defaultBackoff, parseRetryAfter } from '../src/transport.js';
 import { hangingFetch, jsonResponse, mockFetch } from './helpers.js';
@@ -151,7 +152,7 @@ describe('request headers', () => {
     const init = vi.mocked(fetchImpl).mock.calls[0]![1];
     expect(new Headers(init?.headers).get('Authorization')).toBe('Bearer key');
     expect(new Headers(init?.headers).get('Accept')).toBe('application/json');
-    expect(new Headers(init?.headers).get('User-Agent')).toBe('justrouting-js/0.1.0');
+    expect(new Headers(init?.headers).get('User-Agent')).toBe(`justrouting-js/${VERSION}`);
   });
 
   it('omits the Authorization header without an API key', async () => {
@@ -200,7 +201,7 @@ describe('endpoint building', () => {
     });
     const url = String(vi.mocked(fetchImpl).mock.calls[0]![0]);
     expect(url).toBe(
-      'https://api.example.test/osrm/route/v1/driving/103.8198,1.3521;103.9915,1.3644',
+      'https://api.example.test/route/v1/driving/103.8198,1.3521;103.9915,1.3644',
     );
   });
 });

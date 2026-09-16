@@ -113,7 +113,7 @@ export class MatrixService {
     return await this.transport.do(
       {
         method: 'GET',
-        path: `/osrm/table/v1/${profileOrDefault(req.profile ?? '')}/${coords}`,
+        path: `/table/v1/${profileOrDefault(req.profile ?? '')}/${coords}`,
         query: matrixQuery(req),
         needsAuth: true,
       },

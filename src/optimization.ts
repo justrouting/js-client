@@ -225,7 +225,7 @@ export class OptimizationService {
     return await this.transport.do(
       {
         method: 'POST',
-        path: '/vroom',
+        path: '/optimize',
         body: serializeOptimizationRequest(req),
         needsAuth: true,
       },
