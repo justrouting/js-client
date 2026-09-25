@@ -5,7 +5,7 @@
 
 /** VERSION is the client version, reported in the User-Agent header.
  * Keep in sync with the "version" field in package.json. */
-export const VERSION = '0.1.1';
+export const VERSION = '0.3.0';
 
 /** DEFAULT_BASE_URL is the hosted JustRouting API endpoint. */
 export const DEFAULT_BASE_URL = 'https://api.justrouting.tech';

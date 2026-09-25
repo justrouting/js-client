@@ -1,6 +1,6 @@
 # JustRouting JavaScript Client
 
-Official JavaScript client for the [JustRouting](https://justrouting.tech) API — routing, distance matrices, and vehicle routing optimization across Southeast Asia.
+Official JavaScript client for the [JustRouting](https://justrouting.tech) API — routing, distance matrices, map matching, trips, nearest-road lookup, vehicle routing optimization, and geocoding across Southeast Asia.
 
 TypeScript-first, compiled to pure ESM with type declarations. No dependencies outside the Node.js standard library (`fetch`). Requires Node 20.3+.
 
@@ -33,7 +33,7 @@ console.log(`Distance: ${(route.distance / 1000).toFixed(1)} km`);
 
 ## Services
 
-A `Client` exposes four services.
+A `Client` exposes eight services.
 
 ### Routes
 
@@ -77,6 +77,71 @@ if (seconds !== null) {
 ```
 
 The accessors return `null` for unreachable pairs. The API reports those as `null`, which is deliberately kept distinct from a genuine zero — that is why `durations` and `distances` hold `number | null` entries.
+
+### Map Matching
+
+Snap a noisy GPS trace onto the road network and get the route that was driven.
+
+```ts
+const match = await client.mapMatching.get({
+    coordinates: trace, // GPS points in chronological order, at least 2
+});
+console.log(`${Math.round(match.confidence * 100)}% confidence`);
+console.log(match.distance); // metres, via the embedded Route
+```
+
+`Match` extends `Route`, so every route field (`distance`, `duration`, `geometry`, `legs`, …) is available, plus the engine's `confidence` (0–1). `mapMatching.getAll` additionally returns `tracepoints` — the input coordinates snapped to the road network, aligned with your input; an entry is `null` when the engine could not match that point. Useful options: `timestamps` (UNIX seconds per point), `radiuses` (max snap distance, one value per point — the default is only a few metres, so noisy GPS points usually need it), `gaps` (`"split"`/`"ignore"`), `tidy`, `waypoints` (indices to use as waypoints), and `snapping` (`"default"`/`"any"`).
+
+### Trip
+
+Visit a set of points in the fastest possible order (a travelling-salesman heuristic).
+
+```ts
+const trip = await client.trip.get({
+    coordinates: [depot, stopA, stopB],
+});
+console.log(trip.distance); // metres
+```
+
+By default the trip returns to its starting point; set `roundtrip: false` to change that, and `source`/`destination` (`"any"`, `"first"`/`"last"`) to pin the ends. `trip.getAll` also returns `waypoints` in the order the trip visits them.
+
+### Nearest
+
+Find the road segment closest to a coordinate.
+
+```ts
+const wp = await client.nearest.get({
+    coordinate: [103.8198, 1.3521],
+});
+console.log(`${wp.name}, ${Math.round(wp.distance)} m away`);
+```
+
+Pass `number` to get the second-, third-, … nearest segments; `nearest.getAll` returns all of them. The returned `Waypoint` includes the OSM `nodes` of the matched segment.
+
+### Geocode
+
+`geocode.search` converts an address into coordinates, by free text or by structured fields (exactly one of the two):
+
+```ts
+const resp = await client.geocode.search({
+    text: 'Marina Bay Sands, Singapore',
+});
+for (const r of resp.results) {
+    console.log(r.formatted, r.location()); // address text, [lon, lat]
+}
+```
+
+```ts
+const resp = await client.geocode.search({
+    structured: {
+        housenumber: '10',
+        street: 'Bayfront Avenue',
+        city: 'Singapore',
+    },
+});
+```
+
+Results are ordered best first; an empty `results` list simply means nothing matched. The client always requests `format=json`, regardless of the API's default response format. Use `filters` (repeatable, e.g. `countrycode:sg`) to restrict results and `bias` (e.g. `proximity:103.8,1.3`) to prefer places near a point. `GeocodeResult.location()` returns a `Point` in the usual `[longitude, latitude]` order, ready to feed into `routes`, `matrix`, or `optimization`. Errors from the geocoding upstream are classified by HTTP status like any other failure (`401` → `UnauthorizedError`, `429` → `RateLimitedError`, `502` → `UpstreamUnavailableError`).
 
 ### Optimization
 
@@ -222,6 +287,10 @@ npm run build
 export JUSTROUTING_API_KEY=<your key>
 node examples/route.mjs
 node examples/matrix.mjs
+node examples/matching.mjs
+node examples/trip.mjs
+node examples/nearest.mjs
+node examples/geocode.mjs
 node examples/optimization.mjs
 ```
 

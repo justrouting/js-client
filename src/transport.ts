@@ -74,11 +74,13 @@ export interface CallOptions {
   timeout?: number;
 }
 
-/** The shape of a request, independent of transport concerns. */
+/** The shape of a request, independent of transport concerns. Query values
+ * are strings; an array value sends one parameter per entry, for the
+ * repeatable parameters of the geocoding API. */
 export interface RequestSpec {
   method: string;
   path: string;
-  query?: Record<string, string>;
+  query?: Record<string, string | string[]>;
   body?: unknown;
   needsAuth?: boolean;
 }
@@ -302,12 +304,24 @@ export class Transport {
   /** endpoint builds the absolute URL for a request path, preserving any
    * path prefix on the configured base URL. The coordinate separators ","
    * and ";" are legal in a path segment and survive unescaped. */
-  endpoint(path: string, query?: Record<string, string>): string {
+  endpoint(path: string, query?: Record<string, string | string[]>): string {
     const u = new URL(this.baseUrl);
     u.pathname = u.pathname.replace(/\/+$/, '') + path;
     u.search = '';
     u.hash = '';
-    if (query) u.search = new URLSearchParams(query).toString();
+    if (query) {
+      // Built entry by entry: array values become repeated parameters,
+      // which a plain record would stringify with commas instead.
+      const params = new URLSearchParams();
+      for (const [key, value] of Object.entries(query)) {
+        if (Array.isArray(value)) {
+          for (const v of value) params.append(key, v);
+        } else {
+          params.append(key, value);
+        }
+      }
+      u.search = params.toString();
+    }
     return u.toString();
   }
 

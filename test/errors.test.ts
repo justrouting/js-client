@@ -43,6 +43,12 @@ describe('errorFromResponse', () => {
     expect(err.message).toBe('something');
   });
 
+  it('reads the geocoding upstream shape, message preferred over error', () => {
+    const err = errorFromResponse(401, '{"statusCode":401,"error":"Unauthorized","message":"Invalid apiKey"}');
+    expect(err).toBeInstanceOf(UnauthorizedError);
+    expect(err.message).toBe('Invalid apiKey');
+  });
+
   it('classifies bodies by shape, not content type', () => {
     const err = errorFromResponse(400, 'not json at all');
     expect(err).toBeInstanceOf(ApiError);

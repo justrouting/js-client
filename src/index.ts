@@ -2,7 +2,8 @@
  * JustRouting JavaScript client.
  *
  * Official JavaScript client for the JustRouting API — routing, distance
- * matrices, and vehicle routing optimization across Southeast Asia.
+ * matrices, map matching, trips, nearest-road lookup, vehicle routing
+ * optimization, and geocoding across Southeast Asia.
  *
  *     import { Client } from 'justrouting';
  *
@@ -39,11 +40,31 @@ export {
   UnauthorizedError,
   UpstreamUnavailableError,
 } from './errors.js';
+export { GeocodeResult, GeocodeService } from './geocode.js';
+export type {
+  BBox,
+  Datasource,
+  GeocodeQuery,
+  GeocodeRequest,
+  GeocodeResponse,
+  Rank,
+  StructuredQuery,
+  Timezone,
+} from './geocode.js';
 export { Geometry, encodePoints, formatCoord, validatePoint } from './geo.js';
 export type { LineString, Point, PointLike, Waypoint } from './geo.js';
 export { Health, HealthService } from './health.js';
+export { MapMatchingService } from './map_matching.js';
+export type {
+  MapMatchingRequest,
+  MapMatchingResponse,
+  Match,
+  Tracepoint,
+} from './map_matching.js';
 export { MatrixResponse, MatrixService } from './matrix.js';
 export type { MatrixRequest } from './matrix.js';
+export { NearestService } from './nearest.js';
+export type { NearestRequest, NearestResponse } from './nearest.js';
 export { OptimizationService } from './optimization.js';
 export type {
   Job,
@@ -71,4 +92,6 @@ export type {
   RouteResponse,
   Step,
 } from './routes.js';
+export { TripService } from './trip.js';
+export type { TripRequest, TripResponse } from './trip.js';
 export type { CallOptions } from './transport.js';

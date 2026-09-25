@@ -1,7 +1,7 @@
 {
   "name": "@justrouting/client",
-  "version": "0.1.1",
-  "description": "Official JavaScript client for the JustRouting API — routing, distance matrices, and vehicle routing optimization across Southeast Asia.",
+  "version": "0.3.0",
+  "description": "Official JavaScript client for the JustRouting API — routing, distance matrices, map matching, trips, nearest-road lookup, vehicle routing optimization, and geocoding across Southeast Asia.",
   "type": "module",
   "license": "MIT",
   "keywords": [
@@ -10,6 +10,8 @@
     "vroom",
     "matrix",
     "optimization",
+    "map-matching",
+    "geocoding",
     "logistics"
   ],
   "homepage": "https://justrouting.tech",

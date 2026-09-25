@@ -28,10 +28,14 @@ describe('Client construction', () => {
     expect(new Headers(init?.headers).get('Authorization')).toBe('Bearer key');
   });
 
-  it('exposes the four services', () => {
+  it('exposes the eight services', () => {
     const client = new Client('key');
     expect(client.routes).toBeDefined();
     expect(client.matrix).toBeDefined();
+    expect(client.mapMatching).toBeDefined();
+    expect(client.trip).toBeDefined();
+    expect(client.nearest).toBeDefined();
+    expect(client.geocode).toBeDefined();
     expect(client.optimization).toBeDefined();
     expect(client.health).toBeDefined();
   });

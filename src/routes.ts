@@ -257,7 +257,9 @@ function decodeRouteResponse(data: unknown, raw: string): RouteResponse {
   return resp;
 }
 
-function decodeRoute(v: unknown): Route {
+/** decodeRoute decodes one route object. Exported for the Map Matching
+ * service, whose Match entries embed a Route. */
+export function decodeRoute(v: unknown): Route {
   const d = asRecord(v);
   return {
     distance: num(d.distance),

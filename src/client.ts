@@ -35,12 +35,16 @@
  */
 
 import { DEFAULT_BASE_URL, VERSION } from './consts.js';
+import { GeocodeService } from './geocode.js';
 import { HealthService } from './health.js';
+import { MapMatchingService } from './map_matching.js';
 import { MatrixService } from './matrix.js';
+import { NearestService } from './nearest.js';
 import { OptimizationService } from './optimization.js';
 import { RoutesService } from './routes.js';
 import { Transport, defaultBackoff } from './transport.js';
 import type { Backoff } from './transport.js';
+import { TripService } from './trip.js';
 
 const DEFAULT_MAX_RETRIES = 2;
 const DEFAULT_TIMEOUT = 30;
@@ -88,6 +92,14 @@ export class Client {
   readonly routes: RoutesService;
   /** Matrix computes duration and distance matrices. */
   readonly matrix: MatrixService;
+  /** MapMatching snaps GPS traces onto the road network. */
+  readonly mapMatching: MapMatchingService;
+  /** Trip finds the fastest order to visit a set of coordinates. */
+  readonly trip: TripService;
+  /** Nearest finds the road segment closest to a coordinate. */
+  readonly nearest: NearestService;
+  /** Geocode converts addresses into coordinates. */
+  readonly geocode: GeocodeService;
   /** Optimization solves vehicle routing problems. */
   readonly optimization: OptimizationService;
   /** Health reports API and upstream availability. */
@@ -139,6 +151,10 @@ export class Client {
 
     this.routes = new RoutesService(this.transport);
     this.matrix = new MatrixService(this.transport);
+    this.mapMatching = new MapMatchingService(this.transport);
+    this.trip = new TripService(this.transport);
+    this.nearest = new NearestService(this.transport);
+    this.geocode = new GeocodeService(this.transport);
     this.optimization = new OptimizationService(this.transport);
     this.health = new HealthService(this.transport);
   }

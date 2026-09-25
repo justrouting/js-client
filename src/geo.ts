@@ -167,21 +167,28 @@ function decodeLineString(d: Record<string, unknown>): LineString {
  * - location: the snapped position.
  * - distance: the metres between the input coordinate and location.
  * - hint: an opaque token that can speed up subsequent requests.
+ * - nodes: the OSM node IDs of the snapped segment, when the engine returns
+ *   them.
  */
 export interface Waypoint {
   name: string;
   location: Point;
   distance: number;
   hint?: string;
+  nodes?: number[];
 }
 
 export function decodeWaypoint(v: unknown): Waypoint {
   const d = (v ?? {}) as Record<string, unknown>;
   const hint = typeof d.hint === 'string' ? d.hint : undefined;
+  const nodes = Array.isArray(d.nodes)
+    ? d.nodes.map((n) => (typeof n === 'number' && Number.isFinite(n) ? n : 0))
+    : undefined;
   return {
     name: typeof d.name === 'string' ? d.name : '',
     location: asPoint(d.location),
     distance: typeof d.distance === 'number' && Number.isFinite(d.distance) ? d.distance : 0,
     ...(hint !== undefined ? { hint } : {}),
+    ...(nodes !== undefined ? { nodes } : {}),
   };
 }

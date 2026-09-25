@@ -192,7 +192,11 @@ export function errorFromResponse(statusCode: number, body: string): ApiError {
         // {"error": "..."}                       gateway errors
         // {"code": "NoRoute", "message": "..."}  routing engine (string code)
         // {"code": 3, "error": "..."}            optimization engine (int code)
-        message = typeof p.error === 'string' ? p.error : typeof p.message === 'string' ? p.message : '';
+        // {"statusCode": 401, "error": ..., "message": ...}  geocoding upstream
+        //
+        // message wins over error: the geocoding upstream reports both,
+        // with the informative text in message.
+        message = typeof p.message === 'string' ? p.message : typeof p.error === 'string' ? p.error : '';
         const code = p.code;
         if (typeof code === 'string' && code.toLowerCase() !== 'ok') {
           osrmCode = code;
