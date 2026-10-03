@@ -1,5 +1,9 @@
 # JustRouting JavaScript Client
 
+[![CI](https://github.com/justrouting/js-client/actions/workflows/ci.yml/badge.svg)](https://github.com/justrouting/js-client/actions/workflows/ci.yml)
+[![npm](https://img.shields.io/npm/v/%40justrouting%2Fclient)](https://www.npmjs.com/package/@justrouting/client)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
 Official JavaScript client for the [JustRouting](https://justrouting.tech) API — routing, distance matrices, map matching, trips, nearest-road lookup, vehicle routing optimization, and geocoding across Southeast Asia.
 
 TypeScript-first, compiled to pure ESM with type declarations. No dependencies outside the Node.js standard library (`fetch`). Requires Node 20.3+.
