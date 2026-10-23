@@ -75,6 +75,7 @@ export class GeocodeResult {
   housenumber = '';
   street = '';
   suburb = '';
+  district = '';
   city = '';
   county = '';
   state = '';
@@ -269,6 +270,7 @@ function decodeGeocodeResult(v: unknown): GeocodeResult {
   r.housenumber = str(d.housenumber);
   r.street = str(d.street);
   r.suburb = str(d.suburb);
+  r.district = str(d.district);
   r.city = str(d.city);
   r.county = str(d.county);
   r.state = str(d.state);

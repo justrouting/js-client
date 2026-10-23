@@ -18,9 +18,9 @@ function testClient(fetchImpl: typeof fetch): Client {
 const tripFixture = {
   code: 'Ok',
   waypoints: [
-    { hint: 'aaa', distance: 4.216, name: 'Marina Boulevard', location: [103.81982, 1.35211] },
-    { hint: 'ccc', distance: 2.3, name: 'Sentosa Gateway', location: [103.8514, 1.2897] },
-    { hint: 'bbb', distance: 8.104, name: 'Changi Coast Road', location: [103.99151, 1.36442] },
+    { hint: 'aaa', distance: 4.216, name: 'Marina Boulevard', location: [103.81982, 1.35211], trips_index: 0, waypoint_index: 0 },
+    { hint: 'ccc', distance: 2.3, name: 'Sentosa Gateway', location: [103.8514, 1.2897], trips_index: 0, waypoint_index: 1 },
+    { hint: 'bbb', distance: 8.104, name: 'Changi Coast Road', location: [103.99151, 1.36442], trips_index: 0, waypoint_index: 2 },
   ],
   trips: [
     {
@@ -76,6 +76,13 @@ describe('TripService request building', () => {
       geometries: 'geojson',
       overview: 'full',
       exclude: ['motorway', 'ferry'],
+      bearings: ['0,20', '90'],
+      radiuses: ['unlimited', '500'],
+      hints: ['abcDEF==', 'ghiJKL=='],
+      approaches: ['curb', 'opposite'],
+      snapping: 'any',
+      generateHints: true,
+      skipWaypoints: true,
     });
     const url = new URL(String(vi.mocked(fetchImpl).mock.calls[0]![0]));
     expect(url.searchParams.get('roundtrip')).toBe('false');
@@ -86,6 +93,13 @@ describe('TripService request building', () => {
     expect(url.searchParams.get('geometries')).toBe('geojson');
     expect(url.searchParams.get('overview')).toBe('full');
     expect(url.searchParams.get('exclude')).toBe('motorway,ferry');
+    expect(url.searchParams.get('bearings')).toBe('0,20;90');
+    expect(url.searchParams.get('radiuses')).toBe('unlimited;500');
+    expect(url.searchParams.get('hints')).toBe('abcDEF==;ghiJKL==');
+    expect(url.searchParams.get('approaches')).toBe('curb;opposite');
+    expect(url.searchParams.get('snapping')).toBe('any');
+    expect(url.searchParams.get('generate_hints')).toBe('true');
+    expect(url.searchParams.get('skip_waypoints')).toBe('true');
   });
 
   it('omits unset parameters entirely', async () => {
@@ -137,6 +151,8 @@ describe('TripService responses', () => {
     // The input order was Marina, Sentosa, Changi; the engine may visit
     // Sentosa second.
     expect(resp.waypoints[1]!.name).toBe('Sentosa Gateway');
+    expect(resp.waypoints[1]!.tripsIndex).toBe(0);
+    expect(resp.waypoints[1]!.waypointIndex).toBe(1);
   });
 
   it('get() throws NoTrip when the engine found no trip', async () => {

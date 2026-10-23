@@ -41,6 +41,31 @@ import type { CallOptions } from './transport.js';
  *   waypoint. Undefined leaves the decision to the engine.
  * - exclude: road classes to avoid, such as "motorway" or "ferry".
  *   Supported values depend on the profile.
+ * - bearings: restrict the direction of travel at each coordinate, one
+ *   entry per coordinate in visiting order: "{bearing}" or
+ *   "{bearing},{range}" in degrees, for example "0,20" for north within
+ *   ±20°. Coordinates without a restriction use the default when their
+ *   entry is missing at the end of the list.
+ * - radiuses: the snapping radius in metres per coordinate, one entry per
+ *   coordinate in visiting order; "unlimited" disables snapping for that
+ *   coordinate.
+ * - hints: opaque tokens from a previous response's waypoints that speed
+ *   up snapping, one entry per coordinate in visiting order.
+ * - approaches: restrict the road direction at each waypoint, one entry
+ *   per waypoint in visiting order: "curb", "opposite", or "unrestricted"
+ *   (the engine default). An empty entry also selects the default.
+ * - snapping: how coordinates snap onto the road network: "default" (the
+ *   engine default) avoids edges that cannot be used as start or end
+ *   points; "any" snaps to any edge.
+ * - generateHints: request a "hint" on every response waypoint for reuse
+ *   in later requests. The engine does this by default; set to false to
+ *   omit hints.
+ * - skipWaypoints: omit the response waypoints. They still take part in
+ *   the route calculation.
+ * - waypointIndices: the indices of the input coordinates that the
+ *   response should treat as waypoints, for example [0, 3] to keep only
+ *   the first and last. The engine treats every input coordinate as a
+ *   waypoint by default.
  */
 export interface RouteRequest {
   origin: PointLike;
@@ -54,6 +79,14 @@ export interface RouteRequest {
   overview?: string;
   continueStraight?: boolean;
   exclude?: string[];
+  bearings?: string[];
+  radiuses?: string[];
+  hints?: string[];
+  approaches?: string[];
+  snapping?: string;
+  generateHints?: boolean;
+  skipWaypoints?: boolean;
+  waypointIndices?: number[];
 }
 
 /** The full result of a routing query.
@@ -61,12 +94,14 @@ export interface RouteRequest {
  * Fields:
  * - code: the engine status, "Ok" on success.
  * - message: explains a non-Ok code.
+ * - dataVersion: the timestamp of the OSM data the engine used.
  * - routes: ordered best first.
  * - waypoints: the input coordinates snapped to the road network.
  */
 export interface RouteResponse {
   code: string;
   message?: string;
+  dataVersion?: string;
   routes: Route[];
   waypoints: Waypoint[];
 }
@@ -129,6 +164,8 @@ export interface Intersection {
   in?: number;
   out?: number;
   lanes?: Lane[];
+  /** The road classes of the exiting roads, such as "toll" and "ferry". */
+  classes?: string[];
 }
 
 /** A turn lane at an Intersection. */
@@ -214,6 +251,16 @@ function routeQuery(req: RouteRequest): Record<string, string> {
   if (req.overview) q.overview = req.overview;
   if (req.continueStraight !== undefined) q.continue_straight = String(req.continueStraight);
   if (req.exclude && req.exclude.length > 0) q.exclude = req.exclude.join(',');
+  if (req.bearings && req.bearings.length > 0) q.bearings = req.bearings.join(';');
+  if (req.radiuses && req.radiuses.length > 0) q.radiuses = req.radiuses.join(';');
+  if (req.hints && req.hints.length > 0) q.hints = req.hints.join(';');
+  if (req.approaches && req.approaches.length > 0) q.approaches = req.approaches.join(';');
+  if (req.snapping) q.snapping = req.snapping;
+  if (req.generateHints !== undefined) q.generate_hints = String(req.generateHints);
+  if (req.skipWaypoints) q.skip_waypoints = 'true';
+  if (req.waypointIndices && req.waypointIndices.length > 0) {
+    q.waypoints = req.waypointIndices.map(String).join(';');
+  }
   return q;
 }
 
@@ -243,9 +290,11 @@ function asRecord(v: unknown): Record<string, unknown> {
 
 function decodeRouteResponse(data: unknown, raw: string): RouteResponse {
   const d = asRecord(data);
+  const dataVersion = str(d.data_version);
   const resp: RouteResponse = {
     code: str(d.code),
     message: str(d.message),
+    ...(dataVersion !== '' ? { dataVersion } : {}),
     routes: Array.isArray(d.routes) ? d.routes.map((r) => decodeRoute(r)) : [],
     waypoints: Array.isArray(d.waypoints) ? d.waypoints.map((w) => decodeWaypoint(w)) : [],
   };
@@ -335,6 +384,7 @@ function decodeIntersection(v: unknown): Intersection {
   if (typeof d.in === 'number') i.in = d.in;
   if (typeof d.out === 'number') i.out = d.out;
   if (Array.isArray(d.lanes)) i.lanes = d.lanes.map((l) => decodeLane(l));
+  if (Array.isArray(d.classes)) i.classes = strArr(d.classes);
   return i;
 }
 

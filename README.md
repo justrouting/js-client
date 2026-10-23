@@ -33,7 +33,7 @@ const route = await client.routes.get({
 console.log(`Distance: ${(route.distance / 1000).toFixed(1)} km`);
 ```
 
-> The coordinates above are Singapore and Kuala Lumpur, which span two countries. See [Coordinates must share a country](#coordinates-must-share-a-country) — the runnable examples use same-country pairs.
+> The coordinates above are in Singapore. See [Coordinates must share a country](#coordinates-must-share-a-country).
 
 ## Services
 
@@ -89,12 +89,13 @@ Snap a noisy GPS trace onto the road network and get the route that was driven.
 ```ts
 const match = await client.mapMatching.get({
     coordinates: trace, // GPS points in chronological order, at least 2
+    timestamps: ts,     // required: UNIX seconds per point, monotonically increasing
 });
 console.log(`${Math.round(match.confidence * 100)}% confidence`);
 console.log(match.distance); // metres, via the embedded Route
 ```
 
-`Match` extends `Route`, so every route field (`distance`, `duration`, `geometry`, `legs`, …) is available, plus the engine's `confidence` (0–1). `mapMatching.getAll` additionally returns `tracepoints` — the input coordinates snapped to the road network, aligned with your input; an entry is `null` when the engine could not match that point. Useful options: `timestamps` (UNIX seconds per point), `radiuses` (max snap distance, one value per point — the default is only a few metres, so noisy GPS points usually need it), `gaps` (`"split"`/`"ignore"`), `tidy`, `waypoints` (indices to use as waypoints), and `snapping` (`"default"`/`"any"`).
+`Match` extends `Route`, so every route field (`distance`, `duration`, `geometry`, `legs`, …) is available, plus the engine's `confidence` (0–1). `mapMatching.getAll` additionally returns `tracepoints` — the input coordinates snapped to the road network, aligned with your input; an entry is `null` when the engine could not match that point. Useful options: `timestamps` (required — UNIX seconds per point, monotonically increasing), `radiuses` (max snap distance, one value per point — the default is only a few metres, so noisy GPS points usually need it), `gaps` (`"split"`/`"ignore"`), `tidy`, `waypoints` (indices to use as waypoints), `snapping` (`"default"`/`"any"`), `bearings`, `hints`, `approaches`, `exclude`, `generateHints`, and `skipWaypoints`.
 
 ### Trip
 

@@ -47,10 +47,28 @@ describe('NearestService request building', () => {
   it('serializes number and exclude', async () => {
     const fetchImpl = mockFetch(jsonResponse(200, nearestFixture));
     const client = testClient(fetchImpl);
-    await client.nearest.get({ coordinate: [0, 0], number: 3, exclude: ['motorway', 'ferry'] });
+    await client.nearest.get({
+      coordinate: [0, 0],
+      number: 3,
+      exclude: ['motorway', 'ferry'],
+      bearings: ['0,20'],
+      radiuses: ['500'],
+      hints: ['abcDEF=='],
+      approaches: ['curb'],
+      snapping: 'any',
+      generateHints: true,
+      skipWaypoints: true,
+    });
     const url = new URL(String(vi.mocked(fetchImpl).mock.calls[0]![0]));
     expect(url.searchParams.get('number')).toBe('3');
     expect(url.searchParams.get('exclude')).toBe('motorway,ferry');
+    expect(url.searchParams.get('bearings')).toBe('0,20');
+    expect(url.searchParams.get('radiuses')).toBe('500');
+    expect(url.searchParams.get('hints')).toBe('abcDEF==');
+    expect(url.searchParams.get('approaches')).toBe('curb');
+    expect(url.searchParams.get('snapping')).toBe('any');
+    expect(url.searchParams.get('generate_hints')).toBe('true');
+    expect(url.searchParams.get('skip_waypoints')).toBe('true');
   });
 
   it('omits unset parameters entirely', async () => {

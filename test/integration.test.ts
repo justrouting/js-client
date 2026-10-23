@@ -58,6 +58,10 @@ describeLive('integration', () => {
         [103.983033, 1.344782],
         [103.990312, 1.361474],
       ],
+      timestamps: [
+        1720000000, 1720000180, 1720000360, 1720000540, 1720000720,
+        1720000900, 1720001080, 1720001260, 1720001440, 1720001620,
+      ],
     });
     expect(match.confidence).toBeGreaterThan(0);
     expect(match.confidence).toBeLessThanOrEqual(1);

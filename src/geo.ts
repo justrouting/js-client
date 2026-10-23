@@ -169,6 +169,10 @@ function decodeLineString(d: Record<string, unknown>): LineString {
  * - hint: an opaque token that can speed up subsequent requests.
  * - nodes: the OSM node IDs of the snapped segment, when the engine returns
  *   them.
+ * - tripsIndex: which entry of a trip response this waypoint belongs to,
+ *   when the engine returns it.
+ * - waypointIndex: the position of this waypoint within its trip, when the
+ *   engine returns it.
  */
 export interface Waypoint {
   name: string;
@@ -176,6 +180,8 @@ export interface Waypoint {
   distance: number;
   hint?: string;
   nodes?: number[];
+  tripsIndex?: number;
+  waypointIndex?: number;
 }
 
 export function decodeWaypoint(v: unknown): Waypoint {
@@ -184,11 +190,15 @@ export function decodeWaypoint(v: unknown): Waypoint {
   const nodes = Array.isArray(d.nodes)
     ? d.nodes.map((n) => (typeof n === 'number' && Number.isFinite(n) ? n : 0))
     : undefined;
+  const tripsIndex = typeof d.trips_index === 'number' ? d.trips_index : undefined;
+  const waypointIndex = typeof d.waypoint_index === 'number' ? d.waypoint_index : undefined;
   return {
     name: typeof d.name === 'string' ? d.name : '',
     location: asPoint(d.location),
     distance: typeof d.distance === 'number' && Number.isFinite(d.distance) ? d.distance : 0,
     ...(hint !== undefined ? { hint } : {}),
     ...(nodes !== undefined ? { nodes } : {}),
+    ...(tripsIndex !== undefined ? { tripsIndex } : {}),
+    ...(waypointIndex !== undefined ? { waypointIndex } : {}),
   };
 }

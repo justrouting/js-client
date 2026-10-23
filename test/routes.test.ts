@@ -90,6 +90,14 @@ describe('RoutesService request building', () => {
       overview: 'full',
       continueStraight: false,
       exclude: ['motorway', 'ferry'],
+      bearings: ['0,20', '90'],
+      radiuses: ['unlimited', '500'],
+      hints: ['abcDEF==', 'ghiJKL=='],
+      approaches: ['curb', 'opposite'],
+      snapping: 'any',
+      generateHints: true,
+      skipWaypoints: true,
+      waypointIndices: [0, 3],
     });
     const url = new URL(String(vi.mocked(fetchImpl).mock.calls[0]![0]));
     expect(url.searchParams.get('alternatives')).toBe('3');
@@ -99,6 +107,14 @@ describe('RoutesService request building', () => {
     expect(url.searchParams.get('overview')).toBe('full');
     expect(url.searchParams.get('continue_straight')).toBe('false');
     expect(url.searchParams.get('exclude')).toBe('motorway,ferry');
+    expect(url.searchParams.get('bearings')).toBe('0,20;90');
+    expect(url.searchParams.get('radiuses')).toBe('unlimited;500');
+    expect(url.searchParams.get('hints')).toBe('abcDEF==;ghiJKL==');
+    expect(url.searchParams.get('approaches')).toBe('curb;opposite');
+    expect(url.searchParams.get('snapping')).toBe('any');
+    expect(url.searchParams.get('generate_hints')).toBe('true');
+    expect(url.searchParams.get('skip_waypoints')).toBe('true');
+    expect(url.searchParams.get('waypoints')).toBe('0;3');
   });
 
   it('omits unset parameters entirely', async () => {
@@ -151,6 +167,7 @@ describe('RoutesService responses', () => {
     const fetchImpl = mockFetch(
       jsonResponse(200, {
         code: 'Ok',
+        data_version: '2026-10-10T00:00:00Z',
         routes: [
           {
             distance: 1100.5,
@@ -189,6 +206,7 @@ describe('RoutesService responses', () => {
                         in: 0,
                         out: 1,
                         lanes: [{ indications: ['left'], valid: true }],
+                        classes: ['toll'],
                       },
                     ],
                   },
@@ -210,6 +228,7 @@ describe('RoutesService responses', () => {
     const client = testClient(fetchImpl);
     const resp = await client.routes.getAll({ origin: [103.8, 1.3], destination: [103.9, 1.4] });
     expect(resp.code).toBe('Ok');
+    expect(resp.dataVersion).toBe('2026-10-10T00:00:00Z');
     expect(resp.routes).toHaveLength(1);
 
     const route = resp.routes[0]!;
@@ -231,6 +250,7 @@ describe('RoutesService responses', () => {
     expect(step.maneuver.modifier).toBe('right');
     expect(step.maneuver.exit).toBe(1);
     expect(step.intersections![0]!.lanes![0]!.indications).toEqual(['left']);
+    expect(step.intersections![0]!.classes).toEqual(['toll']);
     expect(step.intersections![0]!.in).toBe(0);
     expect(step.intersections![0]!.out).toBe(1);
 

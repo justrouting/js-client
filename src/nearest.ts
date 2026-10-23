@@ -23,12 +23,36 @@ import type { CallOptions } from './transport.js';
  * - profile: the routing profile. Defaults to "driving".
  * - exclude: road classes to avoid, such as "motorway" or "ferry".
  *   Supported values depend on the profile.
+ * - bearings: restrict the direction of travel at the coordinate:
+ *   "{bearing}" or "{bearing},{range}" in degrees, for example "0,20" for
+ *   north within ±20°.
+ * - radiuses: the snapping radius in metres for the coordinate;
+ *   "unlimited" disables snapping.
+ * - hints: opaque tokens from a previous response's waypoints that speed
+ *   up snapping.
+ * - approaches: restrict the road direction at the waypoint: "curb",
+ *   "opposite", or "unrestricted" (the engine default).
+ * - snapping: how the coordinate snaps onto the road network: "default"
+ *   (the engine default) avoids edges that cannot be used as start or end
+ *   points; "any" snaps to any edge.
+ * - generateHints: request a "hint" on every response waypoint for reuse
+ *   in later requests. The engine does this by default; set to false to
+ *   omit hints.
+ * - skipWaypoints: omit the response waypoints. They still take part in
+ *   the nearest-segment calculation.
  */
 export interface NearestRequest {
   coordinate: PointLike;
   number?: number;
   profile?: string;
   exclude?: string[];
+  bearings?: string[];
+  radiuses?: string[];
+  hints?: string[];
+  approaches?: string[];
+  snapping?: string;
+  generateHints?: boolean;
+  skipWaypoints?: boolean;
 }
 
 /** The result of a nearest-segment query.
@@ -104,6 +128,13 @@ function nearestQuery(req: NearestRequest): Record<string, string> {
   const q: Record<string, string> = {};
   if (req.number != null && req.number > 0) q.number = String(req.number);
   if (req.exclude && req.exclude.length > 0) q.exclude = req.exclude.join(',');
+  if (req.bearings && req.bearings.length > 0) q.bearings = req.bearings.join(';');
+  if (req.radiuses && req.radiuses.length > 0) q.radiuses = req.radiuses.join(';');
+  if (req.hints && req.hints.length > 0) q.hints = req.hints.join(';');
+  if (req.approaches && req.approaches.length > 0) q.approaches = req.approaches.join(';');
+  if (req.snapping) q.snapping = req.snapping;
+  if (req.generateHints !== undefined) q.generate_hints = String(req.generateHints);
+  if (req.skipWaypoints) q.skip_waypoints = 'true';
   return q;
 }
 

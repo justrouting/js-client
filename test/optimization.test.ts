@@ -25,6 +25,7 @@ function okSolution(overrides: Record<string, unknown> = {}): Record<string, unk
       waiting_time: 0,
       priority: 0,
       distance: 5000,
+      violations: [],
     },
     routes: [
       {
@@ -37,7 +38,9 @@ function okSolution(overrides: Record<string, unknown> = {}): Record<string, unk
         priority: 0,
         distance: 5000,
         delivery: [3],
+        description: 'van one',
         geometry: 'encoded-polyline',
+        violations: [],
         steps: [
           {
             type: 'start',
@@ -48,10 +51,12 @@ function okSolution(overrides: Record<string, unknown> = {}): Record<string, unk
             arrival: 0,
             duration: 0,
             load: [3],
+            violations: [],
           },
           {
             type: 'job',
             location: [103.8514, 1.2897],
+            location_index: 1,
             id: 1,
             job: 1,
             setup: 0,
@@ -60,6 +65,7 @@ function okSolution(overrides: Record<string, unknown> = {}): Record<string, unk
             arrival: 300,
             duration: 300,
             load: [2],
+            violations: [],
           },
           {
             type: 'end',
@@ -70,6 +76,7 @@ function okSolution(overrides: Record<string, unknown> = {}): Record<string, unk
             arrival: 1200,
             duration: 0,
             load: [0],
+            violations: [],
           },
         ],
       },
@@ -79,6 +86,7 @@ function okSolution(overrides: Record<string, unknown> = {}): Record<string, unk
         id: 2,
         type: 'job',
         location: [103.9915, 1.3644],
+        location_index: 2,
         description: 'cannot fit',
       },
     ],
@@ -99,8 +107,15 @@ describe('OptimizationService request building', () => {
           end: [103.8198, 1.3521],
           capacity: [4],
           skills: [1, 2],
+          type: 'van',
           timeWindow: [0, 28800],
+          breaks: [{ id: 1, timeWindows: [[36000, 39600]], service: 1800, maxLoad: [2] }],
+          speedFactor: 0.8,
           maxTasks: 5,
+          maxTravelTime: 14400,
+          maxDistance: 50000,
+          costs: { fixed: 10, perHour: 2000, perTaskHour: 300, perKm: 2 },
+          steps: [{ type: 'job', id: 1 }],
           description: 'van 1',
         },
       ],
@@ -110,6 +125,8 @@ describe('OptimizationService request building', () => {
           location: [103.8514, 1.2897],
           setup: 60,
           service: 300,
+          setupPerType: { van: 120 },
+          servicePerType: { van: 600 },
           delivery: [1],
           pickup: [2],
           skills: [1],
@@ -127,6 +144,13 @@ describe('OptimizationService request building', () => {
           priority: 10,
         },
       ],
+      matrices: {
+        car: {
+          durations: [[0, 14], [21, 0]],
+          distances: [[0, 1500], [1500, 0]],
+          costs: [[0, 1], [1, 0]],
+        },
+      },
       options: { geometry: true },
     });
 
@@ -142,8 +166,15 @@ describe('OptimizationService request building', () => {
           end: [103.8198, 1.3521],
           capacity: [4],
           skills: [1, 2],
+          type: 'van',
           time_window: [0, 28800],
+          breaks: [{ id: 1, time_windows: [[36000, 39600]], service: 1800, max_load: [2] }],
+          speed_factor: 0.8,
           max_tasks: 5,
+          max_travel_time: 14400,
+          max_distance: 50000,
+          costs: { fixed: 10, per_hour: 2000, per_task_hour: 300, per_km: 2 },
+          steps: [{ type: 'job', id: 1 }],
           description: 'van 1',
         },
       ],
@@ -153,6 +184,8 @@ describe('OptimizationService request building', () => {
           location: [103.8514, 1.2897],
           setup: 60,
           service: 300,
+          setup_per_type: { van: 120 },
+          service_per_type: { van: 600 },
           delivery: [1],
           pickup: [2],
           skills: [1],
@@ -170,6 +203,13 @@ describe('OptimizationService request building', () => {
           priority: 10,
         },
       ],
+      matrices: {
+        car: {
+          durations: [[0, 14], [21, 0]],
+          distances: [[0, 1500], [1500, 0]],
+          costs: [[0, 1], [1, 0]],
+        },
+      },
       options: { g: true },
     }));
   });
@@ -214,14 +254,40 @@ describe('OptimizationService validation', () => {
     );
   });
 
-  it('needs a Start or an End on every vehicle', async () => {
+  it('needs a start/end anchor on every vehicle', async () => {
     const client = testClient(mockFetch());
     await expect(
       client.optimization.solve({
         vehicles: [{ id: 1 }],
         jobs: [{ id: 1, location: [0, 0] }],
       }),
-    ).rejects.toMatchObject({ message: 'justrouting: Vehicles[0] needs a Start or an End' });
+    ).rejects.toMatchObject({
+      message: 'justrouting: Vehicles[0] needs a Start, StartIndex, End or EndIndex',
+    });
+  });
+
+  it('accepts index-only anchors', async () => {
+    const fetchImpl = mockFetch(jsonResponse(200, { code: 0, summary: {}, routes: [], unassigned: [] }));
+    const client = testClient(fetchImpl);
+    await client.optimization.solve({
+      vehicles: [{ id: 1, startIndex: 0 }],
+      jobs: [{ id: 1, locationIndex: 1 }],
+      matrices: { car: { durations: [[0, 1], [1, 0]] } },
+    });
+    const body = JSON.parse(String(vi.mocked(fetchImpl).mock.calls[0]![1]?.body));
+    expect(body.vehicles[0].start_index).toBe(0);
+    expect(body.jobs[0].location_index).toBe(1);
+    expect(body.matrices.car.durations).toEqual([[0, 1], [1, 0]]);
+  });
+
+  it('rejects a job with neither location nor index', async () => {
+    const client = testClient(mockFetch());
+    await expect(
+      client.optimization.solve({
+        vehicles: [{ id: 1, start: [0, 0] }],
+        jobs: [{ id: 1 }],
+      }),
+    ).rejects.toMatchObject({ message: 'justrouting: Jobs[0] needs a Location or a LocationIndex' });
   });
 
   it('prefixes invalid coordinates with their field path', async () => {
@@ -266,7 +332,9 @@ describe('OptimizationService responses', () => {
     const route = solution.routes[0]!;
     expect(route.vehicle).toBe(1);
     expect(route.delivery).toEqual([3]);
+    expect(route.description).toBe('van one');
     expect(route.geometry).toBe('encoded-polyline');
+    expect(route.violations).toEqual([]);
     expect(route.steps).toHaveLength(3);
 
     const job = route.steps[1]!;
@@ -274,12 +342,14 @@ describe('OptimizationService responses', () => {
     expect(job.id).toBe(1);
     expect(job.job).toBe(1);
     expect(job.location).toEqual([103.8514, 1.2897]);
+    expect(job.locationIndex).toBe(1);
     expect(job.arrival).toBe(300);
     expect(job.load).toEqual([2]);
 
     const unassigned = solution.unassigned[0]!;
     expect(unassigned.id).toBe(2);
     expect(unassigned.type).toBe('job');
+    expect(unassigned.locationIndex).toBe(2);
     expect(unassigned.description).toBe('cannot fit');
   });
 

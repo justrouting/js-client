@@ -35,6 +35,7 @@ const geocodeFixture = {
       name: 'Marina Bay Sands',
       housenumber: '10',
       street: 'Bayfront Avenue',
+      district: 'Central Region',
       city: 'Singapore',
       county: 'Singapore',
       state: 'Singapore',
@@ -194,6 +195,7 @@ describe('GeocodeService responses', () => {
     expect(r).toBeInstanceOf(GeocodeResult);
     expect(r.formatted).toBe('Marina Bay Sands, 10 Bayfront Avenue, 018956, Singapore');
     expect(r.street).toBe('Bayfront Avenue');
+    expect(r.district).toBe('Central Region');
     expect(r.countryCode).toBe('sg');
     expect(r.lon).toBe(103.859);
     expect(r.lat).toBe(1.2834);

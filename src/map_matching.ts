@@ -25,8 +25,10 @@ import type { CallOptions } from './transport.js';
  *
  * Fields:
  * - coordinates: the trace to match, in chronological order.
- * - timestamps: UNIX seconds for each coordinate. When set, its length must
- *   equal the number of coordinates.
+ * - timestamps: UNIX seconds for each coordinate, in monotonically
+ *   increasing order. Required: the API specification and upstream OSRM
+ *   both expect them, even though the hosted gateway accepts requests
+ *   without them (with degraded matching).
  * - radiuses: the maximum distance in metres each coordinate may snap, one
  *   value per coordinate. The engine's default snap distance is only a few
  *   metres, so GPS points further from the road need this set.
@@ -46,6 +48,21 @@ import type { CallOptions } from './transport.js';
  *   "false" to omit it.
  * - exclude: road classes to avoid, such as "motorway" or "ferry".
  *   Supported values depend on the profile.
+ * - bearings: restrict the direction of travel at each coordinate, one
+ *   entry per coordinate in visiting order: "{bearing}" or
+ *   "{bearing},{range}" in degrees, for example "0,20" for north within
+ *   ±20°. Coordinates without a restriction use the default when their
+ *   entry is missing at the end of the list.
+ * - hints: opaque tokens from a previous response's tracepoints that speed
+ *   up snapping, one entry per coordinate in visiting order.
+ * - approaches: restrict the road direction at each waypoint, one entry
+ *   per waypoint in visiting order: "curb", "opposite", or "unrestricted"
+ *   (the engine default). An empty entry also selects the default.
+ * - generateHints: request a "hint" on every response tracepoint for
+ *   reuse in later requests. The engine does this by default; set to false
+ *   to omit hints.
+ * - skipWaypoints: omit the response waypoints. They still take part in
+ *   the matching calculation.
  */
 export interface MapMatchingRequest {
   coordinates: PointLike[];
@@ -61,6 +78,11 @@ export interface MapMatchingRequest {
   geometries?: string;
   overview?: string;
   exclude?: string[];
+  bearings?: string[];
+  hints?: string[];
+  approaches?: string[];
+  generateHints?: boolean;
+  skipWaypoints?: boolean;
 }
 
 /** The full result of a map-matching query.
@@ -117,6 +139,7 @@ export class MapMatchingService {
    *
    *     const match = await client.mapMatching.get({
    *         coordinates: trace, // GPS points, in order
+   *         timestamps: ts,     // required: UNIX seconds, one per point
    *     });
    *     console.log(`${Math.round(match.confidence * 100)}% confidence`);
    *
@@ -162,7 +185,10 @@ function validateMapMatchingRequest(req: MapMatchingRequest): void {
       `justrouting: Coordinates needs at least 2 points, got ${req.coordinates.length}`,
     );
   }
-  if (req.timestamps && req.timestamps.length !== req.coordinates.length) {
+  if (!req.timestamps || req.timestamps.length === 0) {
+    throw new InvalidRequestError('justrouting: Timestamps is required for map matching');
+  }
+  if (req.timestamps.length !== req.coordinates.length) {
     throw new InvalidRequestError(
       `justrouting: Timestamps has ${req.timestamps.length} values for ${req.coordinates.length} coordinates`,
     );
@@ -201,6 +227,11 @@ function mapMatchingQuery(req: MapMatchingRequest): Record<string, string> {
   if (req.geometries) q.geometries = req.geometries;
   if (req.overview) q.overview = req.overview;
   if (req.exclude && req.exclude.length > 0) q.exclude = req.exclude.join(',');
+  if (req.bearings && req.bearings.length > 0) q.bearings = req.bearings.join(';');
+  if (req.hints && req.hints.length > 0) q.hints = req.hints.join(';');
+  if (req.approaches && req.approaches.length > 0) q.approaches = req.approaches.join(';');
+  if (req.generateHints !== undefined) q.generate_hints = String(req.generateHints);
+  if (req.skipWaypoints) q.skip_waypoints = 'true';
   return q;
 }
 

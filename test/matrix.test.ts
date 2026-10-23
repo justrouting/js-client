@@ -50,6 +50,39 @@ describe('MatrixService request building', () => {
     expect(url.searchParams.get('destinations')).toBe('1;2');
     expect(url.searchParams.get('annotations')).toBe('duration');
   });
+
+  it('serializes every general option', async () => {
+    const fetchImpl = mockFetch(
+      jsonResponse(200, { code: 'Ok', durations: [], distances: [], sources: [], destinations: [] }),
+    );
+    const client = testClient(fetchImpl);
+    await client.matrix.get({
+      coordinates: points,
+      fallbackSpeed: 30,
+      fallbackCoordinate: 'snapped',
+      scaleFactor: 1.2,
+      bearings: ['0,20', '90', ''],
+      radiuses: ['unlimited', '500', '250'],
+      hints: ['abcDEF==', 'ghiJKL==', 'mnoPQR=='],
+      approaches: ['curb', 'opposite', ''],
+      exclude: ['motorway', 'ferry'],
+      snapping: 'any',
+      generateHints: false,
+      skipWaypoints: true,
+    });
+    const url = new URL(String(vi.mocked(fetchImpl).mock.calls[0]![0]));
+    expect(url.searchParams.get('fallback_speed')).toBe('30');
+    expect(url.searchParams.get('fallback_coordinate')).toBe('snapped');
+    expect(url.searchParams.get('scale_factor')).toBe('1.2');
+    expect(url.searchParams.get('bearings')).toBe('0,20;90;');
+    expect(url.searchParams.get('radiuses')).toBe('unlimited;500;250');
+    expect(url.searchParams.get('hints')).toBe('abcDEF==;ghiJKL==;mnoPQR==');
+    expect(url.searchParams.get('approaches')).toBe('curb;opposite;');
+    expect(url.searchParams.get('exclude')).toBe('motorway,ferry');
+    expect(url.searchParams.get('snapping')).toBe('any');
+    expect(url.searchParams.get('generate_hints')).toBe('false');
+    expect(url.searchParams.get('skip_waypoints')).toBe('true');
+  });
 });
 
 describe('MatrixService validation', () => {
@@ -96,6 +129,7 @@ describe('MatrixService responses', () => {
           { name: 'A', location: [103.8514, 1.2897], distance: 2 },
           { name: 'B', location: [103.9915, 1.3644], distance: 9 },
         ],
+        fallback_speed_cells: [[0, 2]],
       }),
     );
     const client = testClient(fetchImpl);
@@ -107,6 +141,7 @@ describe('MatrixService responses', () => {
     expect(m.duration(0, 0)).toBe(0);
     expect(m.distance(0, 2)).toBeNull();
     expect(m.distance(0, 1)).toBe(4234.1);
+    expect(m.fallbackSpeedCells).toEqual([[0, 2]]);
     expect(m.sources[0]!.name).toBe('Depot');
     expect(m.destinations[2]!.location).toEqual([103.9915, 1.3644]);
   });

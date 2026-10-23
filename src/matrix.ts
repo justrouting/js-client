@@ -28,6 +28,36 @@ import type { CallOptions } from './transport.js';
  *   coordinates. Empty means all of them.
  * - annotations: which matrices to compute: "duration", "distance", or
  *   both. Defaults to both.
+ * - fallbackSpeed: estimate the duration of unreachable pairs from their
+ *   as-the-crow-flies distance at this speed, in km/h. The response
+ *   reports which cells were estimated in fallbackSpeedCells.
+ * - fallbackCoordinate: which coordinates fallback estimates are measured
+ *   from: "input" (the engine default) or "snapped".
+ * - scaleFactor: scale every duration by this factor, for example 1.2 for
+ *   +20%.
+ * - bearings: restrict the direction of travel at each coordinate, one
+ *   entry per coordinate in visiting order: "{bearing}" or
+ *   "{bearing},{range}" in degrees, for example "0,20" for north within
+ *   ±20°. Coordinates without a restriction use the default when their
+ *   entry is missing at the end of the list.
+ * - radiuses: the snapping radius in metres per coordinate, one entry per
+ *   coordinate in visiting order; "unlimited" disables snapping for that
+ *   coordinate.
+ * - hints: opaque tokens from a previous response's waypoints that speed
+ *   up snapping, one entry per coordinate in visiting order.
+ * - approaches: restrict the road direction at each waypoint, one entry
+ *   per waypoint in visiting order: "curb", "opposite", or "unrestricted"
+ *   (the engine default). An empty entry also selects the default.
+ * - exclude: road classes to avoid, such as "motorway" or "ferry".
+ *   Supported values depend on the profile.
+ * - snapping: how coordinates snap onto the road network: "default" (the
+ *   engine default) avoids edges that cannot be used as start or end
+ *   points; "any" snaps to any edge.
+ * - generateHints: request a "hint" on every response waypoint for reuse
+ *   in later requests. The engine does this by default; set to false to
+ *   omit hints.
+ * - skipWaypoints: omit the response sources and destinations. They still
+ *   take part in the matrix calculation.
  * - profile: the routing profile. Defaults to "driving".
  */
 export interface MatrixRequest {
@@ -35,6 +65,17 @@ export interface MatrixRequest {
   sources?: number[];
   destinations?: number[];
   annotations?: string[];
+  fallbackSpeed?: number;
+  fallbackCoordinate?: string;
+  scaleFactor?: number;
+  bearings?: string[];
+  radiuses?: string[];
+  hints?: string[];
+  approaches?: string[];
+  exclude?: string[];
+  snapping?: string;
+  generateHints?: boolean;
+  skipWaypoints?: boolean;
   profile?: string;
 }
 
@@ -51,6 +92,8 @@ export interface MatrixRequest {
  * - distances: travel distances in metres, indexed [source][destination].
  * - sources: the source coordinates snapped to the road network.
  * - destinations: the destination coordinates snapped to the road network.
+ * - fallbackSpeedCells: the [source, destination] pairs whose duration was
+ *   estimated via the fallbackSpeed option.
  */
 export class MatrixResponse {
   code = '';
@@ -59,6 +102,7 @@ export class MatrixResponse {
   distances: (number | null)[][] | null = null;
   sources: Waypoint[] = [];
   destinations: Waypoint[] = [];
+  fallbackSpeedCells: number[][] = [];
 
   /** The travel time in seconds from source i to destination j, or null
    * when the indices are out of range or the pair is unreachable. */
@@ -140,6 +184,18 @@ function matrixQuery(req: MatrixRequest): Record<string, string> {
   );
   if (destinations) q.destinations = destinations;
 
+  if (req.fallbackSpeed !== undefined) q.fallback_speed = String(req.fallbackSpeed);
+  if (req.fallbackCoordinate) q.fallback_coordinate = req.fallbackCoordinate;
+  if (req.scaleFactor !== undefined) q.scale_factor = String(req.scaleFactor);
+  if (req.bearings && req.bearings.length > 0) q.bearings = req.bearings.join(';');
+  if (req.radiuses && req.radiuses.length > 0) q.radiuses = req.radiuses.join(';');
+  if (req.hints && req.hints.length > 0) q.hints = req.hints.join(';');
+  if (req.approaches && req.approaches.length > 0) q.approaches = req.approaches.join(';');
+  if (req.exclude && req.exclude.length > 0) q.exclude = req.exclude.join(',');
+  if (req.snapping) q.snapping = req.snapping;
+  if (req.generateHints !== undefined) q.generate_hints = String(req.generateHints);
+  if (req.skipWaypoints) q.skip_waypoints = 'true';
+
   return q;
 }
 
@@ -180,6 +236,11 @@ function decodeMatrixResponse(data: unknown, raw: string): MatrixResponse {
   resp.sources = Array.isArray(d.sources) ? d.sources.map((w) => decodeWaypoint(w)) : [];
   resp.destinations = Array.isArray(d.destinations)
     ? d.destinations.map((w) => decodeWaypoint(w))
+    : [];
+  resp.fallbackSpeedCells = Array.isArray(d.fallback_speed_cells)
+    ? d.fallback_speed_cells
+        .filter((c): c is unknown[] => Array.isArray(c))
+        .map((c) => c.map((v) => num(v)))
     : [];
   const err = osrmStatusError(resp.code, resp.message);
   if (err) {

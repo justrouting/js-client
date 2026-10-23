@@ -65,6 +65,7 @@ function simpleMatch(): MapMatchingRequest {
       [103.8514, 1.2897],
       [103.9915, 1.3644],
     ],
+    timestamps: [1720000000, 1720000060, 1720000120],
   };
 }
 
@@ -75,14 +76,18 @@ describe('MapMatchingService request building', () => {
     await client.mapMatching.get(simpleMatch());
     const url = String(vi.mocked(fetchImpl).mock.calls[0]![0]);
     expect(url).toBe(
-      'https://api.example.test/match/v1/driving/103.8198,1.3521;103.8514,1.2897;103.9915,1.3644',
+      'https://api.example.test/match/v1/driving/103.8198,1.3521;103.8514,1.2897;103.9915,1.3644?timestamps=1720000000%3B1720000060%3B1720000120',
     );
   });
 
   it('escapes a custom profile in the path', async () => {
     const fetchImpl = mockFetch(jsonResponse(200, matchFixture));
     const client = testClient(fetchImpl);
-    await client.mapMatching.get({ coordinates: [[0, 0], [1, 1]], profile: 'motorcycle' });
+    await client.mapMatching.get({
+      coordinates: [[0, 0], [1, 1]],
+      timestamps: [1720000000, 1720000060],
+      profile: 'motorcycle',
+    });
     const url = new URL(String(vi.mocked(fetchImpl).mock.calls[0]![0]));
     expect(url.pathname).toBe('/match/v1/motorcycle/0,0;1,1');
   });
@@ -103,6 +108,11 @@ describe('MapMatchingService request building', () => {
       geometries: 'geojson',
       overview: 'full',
       exclude: ['motorway', 'ferry'],
+      bearings: ['0,20', '90', ''],
+      hints: ['abcDEF==', 'ghiJKL==', 'mnoPQR=='],
+      approaches: ['curb', 'opposite', ''],
+      generateHints: false,
+      skipWaypoints: true,
     });
     const url = new URL(String(vi.mocked(fetchImpl).mock.calls[0]![0]));
     expect(url.searchParams.get('timestamps')).toBe('1720000000;1720000060;1720000120');
@@ -116,14 +126,26 @@ describe('MapMatchingService request building', () => {
     expect(url.searchParams.get('geometries')).toBe('geojson');
     expect(url.searchParams.get('overview')).toBe('full');
     expect(url.searchParams.get('exclude')).toBe('motorway,ferry');
+    expect(url.searchParams.get('bearings')).toBe('0,20;90;');
+    expect(url.searchParams.get('hints')).toBe('abcDEF==;ghiJKL==;mnoPQR==');
+    expect(url.searchParams.get('approaches')).toBe('curb;opposite;');
+    expect(url.searchParams.get('generate_hints')).toBe('false');
+    expect(url.searchParams.get('skip_waypoints')).toBe('true');
   });
 
-  it('omits unset parameters entirely', async () => {
+  it('omits unset parameters except the required timestamps', async () => {
     const fetchImpl = mockFetch(jsonResponse(200, matchFixture));
     const client = testClient(fetchImpl);
     await client.mapMatching.get(simpleMatch());
     const url = new URL(String(vi.mocked(fetchImpl).mock.calls[0]![0]));
-    expect(url.search).toBe('');
+    expect(url.searchParams.get('timestamps')).toBe('1720000000;1720000060;1720000120');
+    for (const key of [
+      'radiuses', 'gaps', 'tidy', 'waypoints', 'snapping', 'steps',
+      'geometries', 'overview', 'annotations', 'bearings', 'hints',
+      'approaches', 'generate_hints', 'skip_waypoints',
+    ]) {
+      expect(url.searchParams.has(key)).toBe(false);
+    }
   });
 });
 
@@ -140,6 +162,15 @@ describe('MapMatchingService validation', () => {
     await expect(client.mapMatching.get(null as never)).rejects.toBeInstanceOf(InvalidRequestError);
   });
 
+  it('rejects a missing timestamps list', async () => {
+    const client = testClient(mockFetch());
+    await expect(
+      client.mapMatching.get({ coordinates: [[0, 0], [1, 1]] }),
+    ).rejects.toMatchObject({
+      message: 'justrouting: Timestamps is required for map matching',
+    });
+  });
+
   it('rejects a timestamp count mismatch', async () => {
     const client = testClient(mockFetch());
     await expect(
@@ -152,7 +183,11 @@ describe('MapMatchingService validation', () => {
   it('rejects radiuses that do not cover every coordinate', async () => {
     const client = testClient(mockFetch());
     await expect(
-      client.mapMatching.get({ coordinates: [[0, 0], [1, 1]], radiuses: [10] }),
+      client.mapMatching.get({
+        coordinates: [[0, 0], [1, 1]],
+        timestamps: [1720000000, 1720000060],
+        radiuses: [10],
+      }),
     ).rejects.toMatchObject({
       message: 'justrouting: Radiuses needs one value per coordinate, got 1 for 2 coordinates',
     });
@@ -161,14 +196,22 @@ describe('MapMatchingService validation', () => {
   it('rejects a negative radius', async () => {
     const client = testClient(mockFetch());
     await expect(
-      client.mapMatching.get({ coordinates: [[0, 0], [1, 1]], radiuses: [-5, -5] }),
+      client.mapMatching.get({
+        coordinates: [[0, 0], [1, 1]],
+        timestamps: [1720000000, 1720000060],
+        radiuses: [-5, -5],
+      }),
     ).rejects.toMatchObject({ message: 'justrouting: Radiuses[0] must not be negative, got -5' });
   });
 
   it('rejects a waypoint index outside the coordinate slice', async () => {
     const client = testClient(mockFetch());
     await expect(
-      client.mapMatching.get({ coordinates: [[0, 0], [1, 1]], waypoints: [0, 5] }),
+      client.mapMatching.get({
+        coordinates: [[0, 0], [1, 1]],
+        timestamps: [1720000000, 1720000060],
+        waypoints: [0, 5],
+      }),
     ).rejects.toMatchObject({
       message: 'justrouting: Waypoints[1] = 5 is out of range for 2 coordinates',
     });
@@ -177,7 +220,10 @@ describe('MapMatchingService validation', () => {
   it('rejects the [lat, lon] mix-up locally', async () => {
     const client = testClient(mockFetch());
     await expect(
-      client.mapMatching.get({ coordinates: [[1.3521, 103.8198], [1.3644, 103.9915]] }),
+      client.mapMatching.get({
+        coordinates: [[1.3521, 103.8198], [1.3644, 103.9915]],
+        timestamps: [1720000000, 1720000060],
+      }),
     ).rejects.toBeInstanceOf(InvalidCoordinatesError);
   });
 });

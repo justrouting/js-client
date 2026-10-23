@@ -14,6 +14,8 @@ const client = new Client(apiKey, { timeout: 10 });
 
 // A GPS trace along the East Coast Parkway, from Marina Bay towards
 // Changi — points a few kilometres apart, with a little GPS noise.
+// Timestamps are required: real applications should use device-reported
+// UNIX seconds per point.
 try {
   const match = await client.mapMatching.get(
     {
@@ -28,6 +30,10 @@ try {
         [103.962769, 1.350345],
         [103.983033, 1.344782],
         [103.990312, 1.361474],
+      ],
+      timestamps: [
+        1720000000, 1720000180, 1720000360, 1720000540, 1720000720,
+        1720000900, 1720001080, 1720001260, 1720001440, 1720001620,
       ],
     },
     { timeout: 30 },

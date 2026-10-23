@@ -67,6 +67,8 @@ export { NearestService } from './nearest.js';
 export type { NearestRequest, NearestResponse } from './nearest.js';
 export { OptimizationService } from './optimization.js';
 export type {
+  Break,
+  CustomMatrix,
   Job,
   OptimizationOptions,
   OptimizationRequest,
@@ -78,7 +80,10 @@ export type {
   TimeWindow,
   Unassigned,
   Vehicle,
+  VehicleCosts,
   VehicleRoute,
+  VehicleStep,
+  Violation,
 } from './optimization.js';
 export { RoutesService } from './routes.js';
 export type {
