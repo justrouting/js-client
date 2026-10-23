@@ -89,7 +89,10 @@ describe('retries', () => {
 
   it('stops retrying when the call deadline expires during the backoff wait', async () => {
     const fetchImpl = mockFetch(jsonResponse(500, { error: 'boom' }));
-    const client = testClient('key', fetchImpl, { backoff: () => 10 });
+    // The backoff must outlast the 50ms deadline, so the deadline expires
+    // during the wait on any machine — with a shorter backoff the retry
+    // fires before the deadline and the test becomes timing-dependent.
+    const client = testClient('key', fetchImpl, { backoff: () => 100 });
     const err = await client.health.get({ timeout: 0.05 }).catch((e: unknown) => e);
     expect(err).toBeInstanceOf(DOMException);
     expect((err as DOMException).name).toBe('TimeoutError');
