@@ -1,0 +1,44 @@
+# Publish to npm when a v* tag is pushed.
+#
+# The package version comes from package.json, so the workflow verifies that
+# the tag and the package version agree before publishing. Requires a
+# repository secret NPM_TOKEN holding an npm access token (Automation type)
+# for the @justrouting scope (Settings → Secrets and variables → Actions).
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Install
+        run: npm ci
+
+      - name: Verify tag matches package version
+        run: |
+          VERSION="$(node -p "require('./package.json').version")"
+          if [ "$VERSION" != "${GITHUB_REF_NAME#v}" ]; then
+            echo "tag ${GITHUB_REF_NAME} does not match package.json version $VERSION" >&2
+            exit 1
+          fi
+
+      - name: Publish to npm
+        # prepublishOnly runs typecheck, the full test suite and a fresh
+        # build before the package is packed, so the published artifact
+        # always matches the committed source.
+        run: npm publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
