@@ -88,15 +88,24 @@ describe('retries', () => {
   });
 
   it('stops retrying when the call deadline expires during the backoff wait', async () => {
-    const fetchImpl = mockFetch(jsonResponse(500, { error: 'boom' }));
-    // The backoff must outlast the 50ms deadline, so the deadline expires
-    // during the wait on any machine — with a shorter backoff the retry
-    // fires before the deadline and the test becomes timing-dependent.
-    const client = testClient('key', fetchImpl, { backoff: () => 100 });
-    const err = await client.health.get({ timeout: 0.05 }).catch((e: unknown) => e);
-    expect(err).toBeInstanceOf(DOMException);
-    expect((err as DOMException).name).toBe('TimeoutError');
-    expect(vi.mocked(fetchImpl).mock.calls).toHaveLength(1);
+    // Fake timers make the deadline deterministic: the backoff wait is 100s
+    // and the deadline 50ms, so advancing past 50ms must expire the call
+    // during the wait without a second attempt, on any machine.
+    vi.useFakeTimers();
+    try {
+      const fetchImpl = mockFetch(jsonResponse(500, { error: 'boom' }));
+      const client = testClient('key', fetchImpl, { backoff: () => 100 });
+      const pending = client.health.get({ timeout: 0.05 }).catch((e: unknown) => e);
+      // Flush the first attempt and its retry scheduling.
+      await vi.advanceTimersByTimeAsync(0);
+      await vi.advanceTimersByTimeAsync(100);
+      const err = await pending;
+      expect(err).toBeInstanceOf(DOMException);
+      expect((err as DOMException).name).toBe('TimeoutError');
+      expect(vi.mocked(fetchImpl).mock.calls).toHaveLength(1);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 
